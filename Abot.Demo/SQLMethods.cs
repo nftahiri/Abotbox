@@ -17,7 +17,6 @@ namespace SQLMethodsNameSpace
 
             SqlCommand cmd = new SqlCommand();
             cmd.CommandType = CommandType.Text;
-            //cmd.CommandText = "INSERT INTO dbo.TestProductTable (ProductName, ProductCategory, ProductPrice, Store) VALUES ('Human', 'Homosapien', $4.00, 'earth.com/');";
 
             string stmt = "INSERT INTO dbo.TestProductTable(ProductName, ProductCategory, ProductPrice, Source, TimeGenerated) VALUES(@ProductName, @ProductCategory, @ProductPrice, @Source, @TimeGenerated)";
 
@@ -38,6 +37,11 @@ namespace SQLMethodsNameSpace
             cmd.Connection = sqlConnection1;
             sqlConnection1.Open();
             cmd.ExecuteNonQuery();
+
+            Console.WriteLine();
+            Console.WriteLine("Inserted " + ProductName + ": " + ProductPrice + " as a record in database.");
+            Console.WriteLine();
+
             sqlConnection1.Close();
         }
 
@@ -80,5 +84,96 @@ namespace SQLMethodsNameSpace
             return columnData;
         }
 
-     }
+        public static List<Product> GetProductListings(string productCategory)
+        {
+            //List<string> columnData = new List<string>();
+            string query = "SELECT * FROM dbo.TestProductTable WHERE ProductCategory = @ProductCategory";
+
+            SqlConnection sqlConnection1 =
+            new SqlConnection(ConnectionString);
+
+            SqlCommand cmd = new SqlCommand();
+
+            cmd = new SqlCommand(query, sqlConnection1);
+            cmd.Parameters.Add("@ProductCategory", SqlDbType.VarChar, 100);
+            cmd.Parameters["@ProductCategory"].Value = productCategory;
+
+            cmd.CommandType = CommandType.Text;
+            sqlConnection1.Open();
+
+            List<Product> products = new List<Product>();
+
+            using (cmd)
+            {
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Product prdct = new Product();
+
+                        prdct.ProductName = reader.GetValue(0).ToString();
+                        prdct.ProductCategory = reader.GetValue(1).ToString();
+                        prdct.ProductPrice = double.Parse((reader.GetValue(2).ToString()));
+                        prdct.Source = reader.GetValue(3).ToString();
+                        prdct.TimeGenerated = DateTime.Parse(reader.GetValue(4).ToString());
+
+                        products.Add(prdct);
+                    }
+                }
+            }
+            return products;
+        }
+    }
  }
+
+public class Product
+{
+
+    public Product()
+    {
+        ProductName = "";
+        ProductCategory = "";
+        ProductPrice = 0;
+        Source = "";
+        TimeGenerated = DateTime.MinValue;
+    }
+
+    // Constructor that takes  arguments:
+    public Product(string productName, string productCategory, double productPrice, string source, DateTime timeGenerated)
+    {
+        ProductName = productName;
+        ProductCategory = productCategory;
+        ProductPrice = productPrice;
+        Source = source;
+        TimeGenerated = timeGenerated;
+    }
+
+    public string ProductName
+    {
+        get;
+        set;
+    }
+    public string ProductCategory
+    {
+        get;
+        set;
+    }
+
+    public double ProductPrice
+    {
+        get;
+        set;
+    }
+
+    public string Source
+    {
+        get;
+        set;
+    }
+
+    public DateTime TimeGenerated
+    {
+        get;
+        set;
+    }
+}

@@ -10,50 +10,61 @@ namespace Abot.Demo
 {
     class Program
     {
-        //Consider creating a website class which holds roots, identifiers (price, title, url) and other info
-        static string walmartRoot = "https://www.walmart.com/search/?query=";
-        static string loblawsRoot = "https://www.loblaws.ca/search/?search-bar=";
-        static string rcsRoot = "https://www.realcanadiansuperstore.ca/search/?search-bar=";
+        static string category;
 
-        static string walmartURLIdentifier = "/ip/";
-        static string loblawsURLIdentifier = "/Food/";
-        static string rcsURLIdentifier = "/Food/";
+        static Website walmart = new Website("https://www.walmart.com/search/?query=", "/ip/", "ProductTitle", "price - characteristic");
+        static Website nofrills = new Website("https://www.nofrills.ca/search/?search-bar=", category, "product-name", "reg-price-text");
+        static Website rcs = new Website("https://www.realcanadiansuperstore.ca/search/?search-bar=", category, "product-name", "reg-price-text");
+        static Website extraFoods = new Website("https://www.extrafoods.ca/search/?search-bar=", category, "product-name", "reg-price-text");
 
-        static string walmartTitleIdentifier = "ProductTitle";
-        static string walmartPriceIdentifier = "price-characteristic";
-
-        static string rcsPriceIdentifier = "reg-price-text";
-        static string rcsTitleIdentifier = "product-name";
-
-        static string loblawsPriceIdentifier = "price__value selling-price-list__item__price selling-price-list__item__price--now-price__value";
-        static string loblawsTitleIdentifier = "product-name__item product-name__item--name";
+        static Website siteToCrawl = new Website();
 
         static void Main(string[] args)
         {
-            Crawl(args);
+            SQLMethods.DropProductTable();
+
+            List<Website> loblawOwnedSites = new List<Website>(new Website[] {nofrills, rcs, extraFoods});
+
+            foreach (Website site in loblawOwnedSites)
+            { 
+                siteToCrawl = site;
+                Crawl(args, site);
+            }
+
+            //Testing
+            //siteToCrawl = nofrills;
+            //Crawl(args, siteToCrawl);
         }
 
-        public static void Crawl(string[] args)
+        public static void Crawl(string[] args, Website website)
         {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
             log4net.Config.XmlConfigurator.Configure();
 
             //We'll use this List in the foreach below
             List<Uri> URLList = new List<Uri>();
 
-            //A list of (generic) shopping items we will search for during crawl
+            //A list of (generi c) shopping items we will search for during crawl
             List<string> genericProductNames = SQLMethods.GetGenericProductNames();
+            
+            //Testing a single item
+            //List<string> genericProductNames = new List<string>();
+            //genericProductNames.Add("Fried chicken");
 
             //Clear SQL Product Table contents (from last crawl)
-            SQLMethods.DropProductTable();
 
             foreach (string genericProductName in genericProductNames)
             {
-                Uri siteUri = new Uri(walmartRoot + genericProductName);
+                category = genericProductName;
+                
+                Uri siteUri = new Uri(website.Root + genericProductName.Replace(" ", "+"));
+
                 Uri uriToCrawl = siteUri;
 
                 IWebCrawler crawler;
-                crawler = GetManuallyConfiguredWebCrawler();
-                //crawler.CrawlBag = genericProductName;
+                //crawler = GetManuallyConfiguredWebCrawler();
+                crawler = GetCustomBehaviorUsingLambdaWebCrawler();
 
                 //Subscribe to any of these asynchronous events, there are also sychronous versions of each.
                 //This is where you process data about specific events of the crawl
@@ -64,40 +75,71 @@ namespace Abot.Demo
 
                 //This is a synchronous call
                 CrawlResult result = crawler.Crawl(uriToCrawl);
+                //Console.Read();
             }
         }
 
         static void crawler_ProcessPageCrawlCompleted(object sender, PageCrawlCompletedArgs e)
         {
-            {
+            {                
+
                 CrawledPage crawledPage = e.CrawledPage;
 
                 if (crawledPage.WebException != null || crawledPage.HttpWebResponse.StatusCode != HttpStatusCode.OK)
                     Console.WriteLine("Crawl of page failed {0}", crawledPage.Uri.AbsoluteUri);
-                else
+                else 
                     Console.WriteLine("Crawl of page succeeded {0}", crawledPage.Uri.AbsoluteUri);
 
                 //If the URL we're searching has a Food Item URL identifier, scrape the data
-                if (crawledPage.Uri.ToString().Contains(walmartURLIdentifier))
+                var title = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(siteToCrawl.ProductTitleIdentifier);
+                if (title.Length < 1)
+                    return;
+                
+                var productName = title[1].Children[1].TextContent;
+                var pluralCategory = category + "s";
+                var singularCategory = category.Remove(category.Length - 1);
+                var productNameTwo = title[1].Children[0].InnerHtml;
+
+                if (productNameTwo.ToLower().Contains(category.ToLower()))
+                    productName = productNameTwo;
+
+
+                if (crawledPage.Uri.ToString().Contains(singularCategory.Replace(" ","+")) && 
+                    (productName.ToLower().Contains(category.ToLower()) ||
+                    productName.ToLower().Contains(singularCategory.ToLower()) ||
+                    productName.ToLower().Contains(pluralCategory.ToLower())) )
                 {
-                    var title = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(walmartTitleIdentifier);
+                    //For walmart
+                    /*var title = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(walmartTitleIdentifier);
                     var productName = title[0].TextContent;
 
                     var price = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(walmartPriceIdentifier);
-                    var productPrice = price[0].ParentElement.TextContent;
+                    var productPrice = price[0].ParentElement.TextContent;*/
+
+                   
+                    title = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(siteToCrawl.ProductTitleIdentifier);
+                    productName = title[1].Children[1].TextContent;
+                    productNameTwo = title[1].Children[0].InnerHtml;
+
+                    if (productNameTwo.ToLower().Contains(category.ToLower()))
+                        productName = productNameTwo;
+
+                    var price = crawledPage.AngleSharpHtmlDocument.GetElementsByClassName(siteToCrawl.ProductPriceIdentifier);
+                    var productPrice = price[0].InnerHtml;
 
                     var site = crawledPage.ParentUri.Host;
-                    var category = "";
+                    var productCategory = category;
+
+                    /*Console.WriteLine();
+                    Console.WriteLine("********************************");
+                    Console.WriteLine("Would insert:");
+                    Console.WriteLine(productName);
+                    Console.WriteLine(productPrice);
+                    Console.WriteLine("********************************");
+                    Console.WriteLine();*/
 
                     //Send the scraped data for this specific listing to the SQL Database
-                    SQLMethods.InsertProductRecord(productName, category, productPrice, site);
-
-                    /*Console.WriteLine("***********************************");
-                    Console.WriteLine(title[0].TextContent);
-                    Console.WriteLine(price[0].ParentElement.TextContent);
-                    Console.WriteLine(crawledPage.ParentUri.Host);
-                    Console.WriteLine("***********************************");
-                    Console.WriteLine();*/
+                    SQLMethods.InsertProductRecord(productName, productCategory, productPrice, site);
                 }
             }
         }
@@ -117,25 +159,23 @@ namespace Abot.Demo
             config.IsExternalPageLinksCrawlingEnabled = false;
             config.IsRespectRobotsDotTextEnabled = false;
             config.IsUriRecrawlingEnabled = false;
-            config.MaxConcurrentThreads = 3;
-            config.MaxPagesToCrawl = 30;
+            config.MaxConcurrentThreads = 10;
+            config.MaxPagesToCrawl = 100;
             config.MaxPagesToCrawlPerDomain = 0;
-            config.MinCrawlDelayPerDomainMilliSeconds = 300;
-
-            //Add you own values without modifying Abot's source code.
-            //These are accessible in CrawlContext.CrawlConfuration.ConfigurationException object throughout the crawl
-            config.ConfigurationExtensions.Add("Somekey1", "SomeValue1");
-            config.ConfigurationExtensions.Add("Somekey2", "SomeValue2");
+            config.MinCrawlDelayPerDomainMilliSeconds = 150;
+            //config.HttpRequestTimeoutInSeconds = 60;
+            //config.IsSendingCookiesEnabled = true;
+            //config.IsSslCertificateValidationEnabled = false;
+            config.HttpProtocolVersion = HttpProtocolVersion.Version12;
 
             //Initialize the crawler with custom configuration created above.
             //This override the app.config file values
             return new PoliteWebCrawler(config, null, null, null, null, new Core.AngleSharpHyperlinkParser(), null, null, null);
         }
         
-
         private static IWebCrawler GetCustomBehaviorUsingLambdaWebCrawler()
         {
-            IWebCrawler crawler = GetDefaultWebCrawler();
+            IWebCrawler crawler = GetManuallyConfiguredWebCrawler();
 
             //Register a lambda expression that will make Abot not crawl any url that has the word "ghost" in it.
             //For example http://a.com/ghost, would not get crawled if the link were found during the crawl.
@@ -143,8 +183,9 @@ namespace Abot.Demo
             //NOTE: This is lambda is run after the regular ICrawlDecsionMaker.ShouldCrawlPage method is run.
             crawler.ShouldCrawlPage((pageToCrawl, crawlContext) =>
             {
-                if (pageToCrawl.Uri.AbsoluteUri.Contains("ghost"))
-                    return new CrawlDecision { Allow = false, Reason = "Scared of ghosts" };
+                //if (!pageToCrawl.Uri.AbsoluteUri.Contains("chicken") && !pageToCrawl.Uri.AbsoluteUri.Contains("Chicken"))
+                if (!pageToCrawl.Uri.AbsoluteUri.Contains(category.Replace(" ", "+")) || /*pageToCrawl.Uri.AbsoluteUri.Contains("navid")||*/ pageToCrawl.Uri.AbsoluteUri.Contains("_KG") || pageToCrawl.Uri.AbsoluteUri.Contains("_EA"))
+                    return new CrawlDecision { Allow = false, Reason = "I only crawl the right pages" };
 
                 return new CrawlDecision { Allow = true };
             });
@@ -152,22 +193,23 @@ namespace Abot.Demo
             //Register a lambda expression that will tell Abot to not download the page content for any page after 5th.
             //Abot will still make the http request but will not read the raw content from the stream
             //NOTE: This lambda is run after the regular ICrawlDecsionMaker.ShouldDownloadPageContent method is run
-            crawler.ShouldDownloadPageContent((crawledPage, crawlContext) =>
+            /*crawler.ShouldDownloadPageContent((crawledPage, crawlContext) =>
             {
                 if (crawlContext.CrawledCount >= 5)
                     return new CrawlDecision { Allow = false, Reason = "We already downloaded the raw page content for 5 pages" };
 
                 return new CrawlDecision { Allow = true };
-            });
+            });*/
 
             //Register a lambda expression that will tell Abot to not crawl links on any page that is not internal to the root uri.
             //NOTE: This lambda is run after the regular ICrawlDecsionMaker.ShouldCrawlPageLinks method is run
             crawler.ShouldCrawlPageLinks((crawledPage, crawlContext) =>
             {
-                if (!crawledPage.IsInternal)
-                    return new CrawlDecision { Allow = false, Reason = "We dont crawl links of external pages" };
+                CrawlDecision decision = new CrawlDecision { Allow = true };
+                if (crawledPage.Content.Bytes.Length < 100)
+                    return new CrawlDecision { Allow = false, Reason = "Just crawl links in pages that have at least 100 bytes" };
 
-                return new CrawlDecision { Allow = true };
+                return decision;
             });
 
             return crawler;
@@ -207,18 +249,23 @@ namespace Abot.Demo
 
         static void crawler_ProcessPageCrawlStarting(object sender, PageCrawlStartingArgs e)
         {
-            //Process data
+            PageToCrawl pageToCrawl = e.PageToCrawl;
+            Console.WriteLine("About to crawl link {0} which was found on page {1}", pageToCrawl.Uri.AbsoluteUri, pageToCrawl.ParentUri.AbsoluteUri);
+
         }
 
 
         static void crawler_PageLinksCrawlDisallowed(object sender, PageLinksCrawlDisallowedArgs e)
         {
-            //Process data
+            //CrawledPage crawledPage = e.CrawledPage;
+            //Console.WriteLine("Did not crawl the links on page {0} due to {1}", crawledPage.Uri.AbsoluteUri, e.DisallowedReason);
+
         }
 
         static void crawler_PageCrawlDisallowed(object sender, PageCrawlDisallowedArgs e)
         {
-            //Process data
+            //PageToCrawl pageToCrawl = e.PageToCrawl;
+            //Console.WriteLine("Did not crawl page {0} due to {1}", pageToCrawl.Uri.AbsoluteUri, e.DisallowedReason);
         }
     }
 }

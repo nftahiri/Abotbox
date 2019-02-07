@@ -5,5 +5,6 @@
         NotSpecified,
         Version10,
         Version11,
+        Version12,
     }
 }
