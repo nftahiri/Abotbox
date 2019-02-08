@@ -26,11 +26,11 @@ namespace Abot.Demo
 
             //List<Website> sitesToCrawl = new List<Website>(new Website[] {walmart, nofrills, rcs, extraFoods});
 
-            //Testing
+            //Testing//
             List<Website> sitesToCrawl = new List<Website>(new Website[] {walmart});
 
             foreach (Website site in sitesToCrawl)
-            { 
+            {
                 siteToCrawl = site;
                 Crawl(args, site);
             }
