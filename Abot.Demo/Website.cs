@@ -15,15 +15,23 @@ namespace Abot.Demo
             URLIdentifier = "";
             ProductTitleIdentifier = "";
             ProductPriceIdentifier = "";
+            NumberOfSitesToCrawl = 0;
         }
 
         // Constructor that takes arguments:
-        public Website(string root, string urlIdentifier, string productTitleIdentifier, string productPriceIdentifier)
+        public Website(string root, string urlIdentifier, string productTitleIdentifier, string productPriceIdentifier, int numberOfSitesToCrawl)
         {
             Root = root;
             URLIdentifier = urlIdentifier;
             ProductTitleIdentifier = productTitleIdentifier;
             ProductPriceIdentifier = productPriceIdentifier;
+            NumberOfSitesToCrawl = numberOfSitesToCrawl;
+        }
+
+        public int NumberOfSitesToCrawl
+        {
+            get;
+            set;
         }
 
         public string Root
