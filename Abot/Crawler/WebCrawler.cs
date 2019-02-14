@@ -231,7 +231,7 @@ namespace Abot.Crawler
             _crawlResult.CrawlContext = _crawlContext;
             _crawlComplete = false;
 
-            _logger.InfoFormat("About to crawl site [{0}]", uri.AbsoluteUri);
+            //_logger.InfoFormat("About to crawl site [{0}]", uri.AbsoluteUri);
             PrintConfigValues(_crawlContext.CrawlConfiguration);
 
             if (_memoryManager != null)
@@ -423,8 +423,8 @@ namespace Abot.Crawler
                 }
                 catch (Exception e)
                 {
-                    _logger.Error("An unhandled exception was thrown by a subscriber of the PageCrawlCompleted event for url:" + crawledPage.Uri.AbsoluteUri);
-                    _logger.Error(e);
+                    //_logger.Error("An unhandled exception was thrown by a subscriber of the PageCrawlCompleted event for url:" + crawledPage.Uri.AbsoluteUri);
+                    //_logger.Error(e);
                 }
             }
             else
@@ -873,7 +873,7 @@ namespace Abot.Crawler
         //protected virtual async Task<CrawledPage> CrawlThePage(PageToCrawl pageToCrawl)
         protected virtual CrawledPage CrawlThePage(PageToCrawl pageToCrawl)
         {
-            _logger.DebugFormat("About to crawl page [{0}]", pageToCrawl.Uri.AbsoluteUri);
+            //_logger.DebugFormat("About to crawl page [{0}]", pageToCrawl.Uri.AbsoluteUri);
             FirePageCrawlStartingEventAsync(pageToCrawl);
             FirePageCrawlStartingEvent(pageToCrawl);
 
@@ -886,11 +886,12 @@ namespace Abot.Crawler
 
             Map(pageToCrawl, crawledPage);
 
-            if (crawledPage.HttpWebResponse == null)
+            /*if (crawledPage.HttpWebResponse == null)
                 _logger.InfoFormat("Page crawl complete, Status:[NA] Url:[{0}] Elapsed:[{1}] Parent:[{2}] Retry:[{3}]", crawledPage.Uri.AbsoluteUri, crawledPage.Elapsed, crawledPage.ParentUri, crawledPage.RetryCount);
             else
-                _logger.InfoFormat("Page crawl complete, Status:[{0}] Url:[{1}] Elapsed:[{2}] Parent:[{3}] Retry:[{4}]", Convert.ToInt32(crawledPage.HttpWebResponse.StatusCode), crawledPage.Uri.AbsoluteUri, crawledPage.Elapsed, crawledPage.ParentUri, crawledPage.RetryCount);
-
+                
+                //_logger.InfoFormat("Page crawl complete, Status:[{0}] Url:[{1}] Elapsed:[{2}] Parent:[{3}] Retry:[{4}]", Convert.ToInt32(crawledPage.HttpWebResponse.StatusCode), crawledPage.Uri.AbsoluteUri, crawledPage.Elapsed, crawledPage.ParentUri, crawledPage.RetryCount);
+                */
             return crawledPage;
         }
 
@@ -1003,7 +1004,7 @@ namespace Abot.Crawler
 
         protected virtual void PrintConfigValues(CrawlConfiguration config)
         {
-            _logger.Info("Configuration Values:");
+            /*_logger.Info("Configuration Values:");
 
             string indentString = new string(' ', 2);
             string abotVersion = Assembly.GetAssembly(this.GetType()).GetName().Version.ToString();
@@ -1017,7 +1018,7 @@ namespace Abot.Crawler
             foreach (string key in config.ConfigurationExtensions.Keys)
             {
                 _logger.InfoFormat("{0}{1}: {2}", indentString, key, config.ConfigurationExtensions[key]);
-            }
+            }*/
         }
 
         protected virtual void SignalCrawlStopIfNeeded(CrawlDecision decision)
